@@ -27,11 +27,5 @@ jobs:
     - name: Format
       run: go fmt ./...
 
-    - name: Build
-      run: go build -v ./...
-
     - name: Test
-      run: go test -v ./... -coverprofile=coverage.out
-
-    - name: Coverage
-      run: go tool cover -func=coverage.out
+      run: go test -v ./... -cover
