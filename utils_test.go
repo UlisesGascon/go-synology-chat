@@ -1,54 +1,107 @@
 package main
 
 import (
-    "testing"
 	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"net/http/httptest"
+	"testing"
 )
 
 func TestContains(t *testing.T) {
-    tests := []struct {
-        slice []string
-        item  string
-        want  bool
-    }{
-        {implementedMethods, "chatbot", true},
-        {implementedMethods, "user_list", true},
-        {implementedMethods, "channel_list", true},
-        {implementedMethods, "non_existent", false},
-    }
+	tests := []struct {
+		slice []string
+		item  string
+		want  bool
+	}{
+		{implementedMethods, "chatbot", true},
+		{implementedMethods, "user_list", true},
+		{implementedMethods, "channel_list", true},
+		{implementedMethods, "non_existent", false},
+	}
 
-    for _, tt := range tests {
-        if got := contains(tt.slice, tt.item); got != tt.want {
-            t.Errorf("contains(%v, %q) = %v, want %v", tt.slice, tt.item, got, tt.want)
-        }
-    }
+	for _, tt := range tests {
+		if got := contains(tt.slice, tt.item); got != tt.want {
+			t.Errorf("contains(%v, %q) = %v, want %v", tt.slice, tt.item, got, tt.want)
+		}
+	}
 }
 
 func TestGetUrlByMethod(t *testing.T) {
-    baseUrl := "http://example.com"
-    token := "testtoken"
+	baseUrl := "http://example.com"
+	token := "testtoken"
 
-    tests := []struct {
-        method string
-        want   string
-        err    bool
-    }{
-        {"chatbot", fmt.Sprintf("%s/webapi/entry.cgi?api=SYNO.Chat.External&method=chatbot&version=2&token=%%22%s%%22", baseUrl, token), false},
-        {"user_list", fmt.Sprintf("%s/webapi/entry.cgi?api=SYNO.Chat.External&method=user_list&version=2&token=%%22%s%%22", baseUrl, token), false},
-        {"channel_list", fmt.Sprintf("%s/webapi/entry.cgi?api=SYNO.Chat.External&method=channel_list&version=2&token=%%22%s%%22", baseUrl, token), false},
-        {"non_existent", "", true},
-    }
+	tests := []struct {
+		method string
+		want   string
+		err    bool
+	}{
+		{"chatbot", fmt.Sprintf("%s/webapi/entry.cgi?api=SYNO.Chat.External&method=chatbot&version=2&token=%%22%s%%22", baseUrl, token), false},
+		{"user_list", fmt.Sprintf("%s/webapi/entry.cgi?api=SYNO.Chat.External&method=user_list&version=2&token=%%22%s%%22", baseUrl, token), false},
+		{"channel_list", fmt.Sprintf("%s/webapi/entry.cgi?api=SYNO.Chat.External&method=channel_list&version=2&token=%%22%s%%22", baseUrl, token), false},
+		{"non_existent", "", true},
+	}
 
-    getUrl := GetUrlByMethod(baseUrl, token)
+	getUrl := GetUrlByMethod(baseUrl, token)
 
-    for _, tt := range tests {
-        got, err := getUrl(tt.method)
-        if (err != nil) != tt.err {
-            t.Errorf("GetUrlByMethod() error = %v, wantErr %v", err, tt.err)
-            return
-        }
-        if got != tt.want {
-            t.Errorf("GetUrlByMethod() = %v, want %v", got, tt.want)
-        }
-    }
+	for _, tt := range tests {
+		got, err := getUrl(tt.method)
+		if (err != nil) != tt.err {
+			t.Errorf("GetUrlByMethod() error = %v, wantErr %v", err, tt.err)
+			return
+		}
+		if got != tt.want {
+			t.Errorf("GetUrlByMethod() = %v, want %v", got, tt.want)
+		}
+	}
+}
+
+func TestMakeGetRequest(t *testing.T) {
+	// Start a local HTTP server
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		// Test request parameters
+		if req.URL.String() != "/test" {
+			t.Errorf("want: '/test', got: '%s'", req.URL.String())
+		}
+		// Send response to be tested
+		rw.Write([]byte(`{"hello": "world"}`))
+	}))
+	// Close the server when test finishes
+	defer server.Close()
+
+	// Use server.URL with MakeGetRequest to test
+	result, err := MakeGetRequest(server.URL+"/test", false)()
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	// Check the result
+	if result["hello"] != "world" {
+		t.Errorf("want: 'world', got: '%s'", result["hello"])
+	}
+}
+
+func TestMakeGetRequest_SSL(t *testing.T) {
+	// Start a local HTTPS server
+	server := httptest.NewTLSServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		// Send response to be tested
+		rw.Write([]byte(`{"hello": "world"}`))
+	}))
+	// Disable logging
+	server.Config.ErrorLog = log.New(io.Discard, "", 0)
+	// Close the server when test finishes
+	defer server.Close()
+
+	// Use server.URL with MakeGetRequest to test
+	_, err := MakeGetRequest(server.URL+"/test", false)()
+	if err == nil {
+		t.Errorf("expected SSL error, got nil")
+	}
+
+	// Now try with ignoring SSL errors
+	_, err = MakeGetRequest(server.URL+"/test", true)()
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
 }

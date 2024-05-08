@@ -1,8 +1,12 @@
 package main
 
 import (
+	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 )
 
 var implementedMethods = []string{"chatbot", "user_list", "channel_list"}
@@ -27,5 +31,33 @@ func GetUrlByMethod(baseUrl, token string) func(string) (string, error) {
 		}
 
 		return fmt.Sprintf("%s/webapi/entry.cgi?api=SYNO.Chat.External&method=%s&version=2&token=%%22%s%%22", baseUrl, method, token), nil
+	}
+}
+
+func MakeGetRequest(url string, ignoreSSLErrors bool) func() (map[string]interface{}, error) {
+	return func() (map[string]interface{}, error) {
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: ignoreSSLErrors},
+		}
+		client := &http.Client{Transport: tr}
+
+		resp, err := client.Get(url)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		var result map[string]interface{}
+		err = json.Unmarshal(body, &result)
+		if err != nil {
+			return nil, err
+		}
+
+		return result, nil
 	}
 }
