@@ -105,3 +105,29 @@ func TestMakeGetRequest_SSL(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
+
+func TestGeneratePayloadContent(t *testing.T) {
+	userIDs := []int{1, 2, 3}
+	text := "Hello, World!"
+	file_url := "http://example.com/file"
+
+	// Test without file_url
+	result, err := GeneratePayloadContent(userIDs, text)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := `{"text":"Hello, World!","user_ids":[1,2,3]}`
+	if result != expected {
+		t.Errorf("Expected %s, got %s", expected, result)
+	}
+
+	// Test with file_url
+	result, err = GeneratePayloadContent(userIDs, text, file_url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected = `{"file_url":"http://example.com/file","text":"Hello, World!","user_ids":[1,2,3]}`
+	if result != expected {
+		t.Errorf("Expected %s, got %s", expected, result)
+	}
+}

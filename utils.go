@@ -61,3 +61,17 @@ func MakeGetRequest(url string, ignoreSSLErrors bool) func() (map[string]interfa
 		return result, nil
 	}
 }
+func GeneratePayloadContent(userIDs []int, text string, file_url ...string) (string, error) {
+	payload := map[string]interface{}{
+		"user_ids": userIDs,
+		"text":     text,
+	}
+	if len(file_url) > 0 && file_url[0] != "" {
+		payload["file_url"] = file_url[0]
+	}
+	payloadContent, err := json.Marshal(payload)
+	if err != nil {
+		return "", err
+	}
+	return string(payloadContent), nil
+}
