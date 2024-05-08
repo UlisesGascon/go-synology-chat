@@ -27,7 +27,7 @@ Simple wrapper to send Messages to [Synology Chat](https://www.synology.com/es-e
 ## Installation
 
 ```bash
-go get github.com/UlisesGascon/go-synology-chat
+go get github.com/UlisesGascon/go-synology-chat@1.0.0
 ```
 
 ## Usage
