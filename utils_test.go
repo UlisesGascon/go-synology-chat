@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 )
 
@@ -129,5 +130,29 @@ func TestGeneratePayloadContent(t *testing.T) {
 	expected = `{"file_url":"http://example.com/file","text":"Hello, World!","user_ids":[1,2,3]}`
 	if result != expected {
 		t.Errorf("Expected %s, got %s", expected, result)
+	}
+}
+
+func TestMakePostRequest(t *testing.T) {
+	// Create a test server that responds with a predefined JSON string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"status": "success", "message": "Hello, World!"}`))
+	}))
+	defer server.Close()
+
+	// Call the function with the test server's URL
+	result, err := MakePostRequest(server.URL, "payload", false)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Check the result
+	expected := map[string]interface{}{
+		"status":  "success",
+		"message": "Hello, World!",
+	}
+	if !reflect.DeepEqual(result, expected) {
+		t.Fatalf("Expected %v, got %v", expected, result)
 	}
 }

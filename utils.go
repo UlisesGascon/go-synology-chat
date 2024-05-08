@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
+	"strings"
 )
 
 var implementedMethods = []string{"chatbot", "user_list", "channel_list"}
@@ -61,6 +63,42 @@ func MakeGetRequest(url string, ignoreSSLErrors bool) func() (map[string]interfa
 		return result, nil
 	}
 }
+
+func MakePostRequest(urlStr string, payload string, ignoreSSLErrors bool) (map[string]interface{}, error) {
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: ignoreSSLErrors},
+	}
+	client := &http.Client{Transport: tr}
+
+	formData := url.Values{}
+	formData.Set("payload", payload)
+
+	req, err := http.NewRequest("POST", urlStr, strings.NewReader(formData.Encode()))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var result map[string]interface{}
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
 func GeneratePayloadContent(userIDs []int, text string, file_url ...string) (string, error) {
 	payload := map[string]interface{}{
 		"user_ids": userIDs,
